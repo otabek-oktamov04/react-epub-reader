@@ -1,4 +1,8 @@
-import { ReactReader } from '../lib/index'
+import {
+  ReactReader,
+  type IReactReaderStyle,
+  ReactReaderStyle,
+} from '../lib/index'
 import useLocalStorageState from 'use-local-storage-state'
 
 import { DEMO_URL, DEMO_NAME } from '../components/config'
@@ -10,16 +14,69 @@ interface IProps {
   url: string
 }
 
+type ITheme = 'light' | 'dark' | 'pink' | 'green'
+
+function updateTheme(rendition: Rendition, theme: string) {
+  const themes = rendition.themes
+  switch (theme) {
+    case 'dark': {
+      themes.override('color', '#fff')
+      themes.override('background', '#48484a')
+      break
+    }
+    case 'light': {
+      themes.override('color', '#000')
+      themes.override('background', '#fff')
+      break
+    }
+    case 'green': {
+      themes.override('color', '#000')
+      themes.override('background', '#ceeaba')
+      break
+    }
+    case 'pink': {
+      themes.override('color', '#000')
+      themes.override('background', '#f8f2e5')
+      break
+    }
+  }
+}
+
+function updateFontFamily(rendition: Rendition, font: string) {
+  const themes = rendition.themes
+  switch (font) {
+    case "'Arvo', serif": {
+      themes.override('font-family', "'Arvo', serif")
+      break
+    }
+    case "'Source Code Pro', monospace": {
+      themes.override('font-family', "'Source Code Pro', monospace")
+      break
+    }
+    case "'Playpen Sans', cursive": {
+      themes.override('font-family', "'Playpen Sans', cursive")
+      break
+    }
+    case "'Onest', sans-serif": {
+      themes.override('font-family', "'Onest', sans-serif")
+      break
+    }
+  }
+}
+
 export const Persist = ({ url }: IProps) => {
   const toc = useRef<NavItem[]>([])
   const [page, setPage] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const rendition = useRef<Rendition | undefined>(undefined)
   const [fontSize, setFontSize] = useState(100)
+  const [mode, setMode] = useState('scrolled')
+  const [fontFamily, setFontFamily] = useState("'Arvo', serif")
   const [selectedStyles, setSelectedStyles] = useState({
     font1: true,
     font2: false,
   })
+  const [theme, setTheme] = useState('light')
 
   const [location, setLocation] = useLocalStorageState<string | number>(
     'persist-location',
@@ -29,20 +86,107 @@ export const Persist = ({ url }: IProps) => {
   )
 
   useEffect(() => {
+    const localFont = localStorage.getItem('fontFamily')
+    setTimeout(() => {
+      if (rendition.current && localFont) {
+        console.log('working', localFont)
+        updateFontFamily(rendition.current, localFont || '')
+      }
+    }, 500)
+  }, [rendition.current])
+
+  useEffect(() => {
+    const localMode = localStorage.getItem('mode')
+    if (localMode) {
+      setMode(localMode)
+    }
+  }, [])
+
+  useEffect(() => {
+    const locTheme = localStorage.getItem('theme')
+    if (locTheme) {
+      setTheme(locTheme || 'light')
+    }
+    setTimeout(() => {
+      if (locTheme === 'dark' && rendition.current) {
+        rendition.current.themes.override('color', '#fff')
+      }
+    }, 500)
+  }, [rendition.current])
+
+  useEffect(() => {
+    if (rendition.current) {
+      updateTheme(rendition.current, theme)
+    }
+  }, [theme])
+
+  useEffect(() => {
+    if (rendition.current) {
+      updateFontFamily(rendition.current, fontFamily)
+    }
+  }, [fontFamily])
+
+  useEffect(() => {
     rendition.current?.themes.fontSize(`${fontSize}%`)
   }, [fontSize])
+
+  const lightReaderTheme: IReactReaderStyle = {
+    ...ReactReaderStyle,
+    readerArea: {
+      ...ReactReaderStyle.readerArea,
+      background: '#fff',
+    },
+  }
+
+  const darkReaderTheme: IReactReaderStyle = {
+    ...ReactReaderStyle,
+    readerArea: {
+      ...ReactReaderStyle.readerArea,
+      background: '#48484a',
+    },
+  }
+
+  const greenReaderTheme: IReactReaderStyle = {
+    ...ReactReaderStyle,
+    readerArea: {
+      ...ReactReaderStyle.readerArea,
+      background: '#ceeaba',
+    },
+  }
+
+  const pinkReaderTheme: IReactReaderStyle = {
+    ...ReactReaderStyle,
+    readerArea: {
+      ...ReactReaderStyle.readerArea,
+      background: '#f8f2e5',
+    },
+  }
+
+  const readerTheme = () => {
+    if (theme === 'dark') {
+      return darkReaderTheme
+    } else if (theme === 'green') {
+      return greenReaderTheme
+    } else if (theme === 'pink') {
+      return pinkReaderTheme
+    } else {
+      return lightReaderTheme
+    }
+  }
 
   return (
     <Example title="">
       <ReactReader
         url={DEMO_URL}
         epubOptions={{
-          flow: 'paginated',
+          flow: mode,
+          manager: 'continuous',
         }}
-        swipeable
-        title="Yoki - Ebook reader"
+        swipeable={mode === 'paginated'}
+        title="Yoki - Ebook Reader"
         location={location}
         tocChanged={(_toc) => (toc.current = _toc)}
+        readerStyles={readerTheme()}
         locationChanged={(loc: string) => {
           setLocation(loc)
           if (rendition.current && toc.current) {
@@ -93,7 +237,7 @@ export const Persist = ({ url }: IProps) => {
           background: 'white',
           bottom: '0',
           width: '100vw',
-          height: '50vh',
+          height: '60vh',
           borderTopLeftRadius: '10px',
           borderTopRightRadius: '10px',
           padding: '14px',
@@ -114,13 +258,17 @@ export const Persist = ({ url }: IProps) => {
             }}
           >
             <div
-              className="color selected"
-              data-color="#ffffff"
+              className="color"
+              onClick={() => {
+                setTheme('light')
+                localStorage.setItem('theme', 'light')
+              }}
               style={{
                 background: '#ffffff',
                 padding: '10px',
                 borderRadius: '8px',
-                border: '1px solid #dadfdd',
+                border:
+                  theme === 'light' ? '1px solid #FFFF00' : '1px solid #dadfdd',
                 width: '20vw',
                 boxSizing: 'border-box',
                 textAlign: 'center',
@@ -130,13 +278,17 @@ export const Persist = ({ url }: IProps) => {
               Aa
             </div>
             <div
-              className="color selected"
-              data-color="#ffffff"
+              className="color"
+              onClick={() => {
+                setTheme('green')
+                localStorage.setItem('theme', 'green')
+              }}
               style={{
-                background: '#ffffff',
+                background: '#ceeaba',
                 padding: '10px',
                 borderRadius: '8px',
-                border: '1px solid #dadfdd',
+                border:
+                  theme === 'green' ? '1px solid #FFFF00' : '1px solid #dadfdd',
                 width: '20vw',
                 boxSizing: 'border-box',
                 textAlign: 'center',
@@ -146,29 +298,38 @@ export const Persist = ({ url }: IProps) => {
               Aa
             </div>
             <div
-              className="color selected"
-              data-color="#ffffff"
+              className="color "
+              onClick={() => {
+                setTheme('dark')
+                localStorage.setItem('theme', 'dark')
+              }}
               style={{
-                background: '#ffffff',
+                background: '#48484a',
                 padding: '10px',
                 borderRadius: '8px',
-                border: '1px solid #dadfdd',
+                border:
+                  theme === 'dark' ? '1px solid #FFFF00' : '1px solid #dadfdd',
                 width: '20vw',
                 boxSizing: 'border-box',
                 textAlign: 'center',
                 cursor: 'pointer',
+                color: 'white',
               }}
             >
               Aa
             </div>
             <div
-              className="color selected"
-              data-color="#ffffff"
+              className="color"
+              onClick={() => {
+                setTheme('pink')
+                localStorage.setItem('theme', 'pink')
+              }}
               style={{
-                background: '#ffffff',
+                background: '#f8f2e5',
                 padding: '10px',
                 borderRadius: '8px',
-                border: '1px solid #dadfdd',
+                border:
+                  theme === 'pink' ? '1px solid #FFFF00' : '1px solid #dadfdd',
                 width: '20vw',
                 boxSizing: 'border-box',
                 textAlign: 'center',
@@ -179,6 +340,110 @@ export const Persist = ({ url }: IProps) => {
             </div>
           </div>
         </div>
+
+        <div
+          style={{
+            marginTop: '20px',
+          }}
+        >
+          <p>Yozuv Turi</p>
+          <div
+            style={{
+              display: 'flex',
+              gap: '8px',
+              marginTop: '10px',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div
+              onClick={() => {
+                setFontFamily("'Arvo', serif")
+                localStorage.setItem('fontFamily', "'Arvo', serif")
+              }}
+              style={{
+                padding: '10px',
+                borderRadius: '8px',
+                border:
+                  fontFamily === "'Arvo', serif"
+                    ? '1px solid #FFFF00'
+                    : '1px solid #dadfdd',
+                width: '20vw',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              Literata
+            </div>
+            <div
+              onClick={() => {
+                setFontFamily("'Source Code Pro', monospace")
+                localStorage.setItem(
+                  'fontFamily',
+                  "'Source Code Pro', monospace"
+                )
+              }}
+              style={{
+                background: '#fff',
+                padding: '10px',
+                borderRadius: '8px',
+                border:
+                  fontFamily === "'Source Code Pro', monospace"
+                    ? '1px solid #FFFF00'
+                    : '1px solid #dadfdd',
+                width: '20vw',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              Playpan
+            </div>
+            <div
+              onClick={() => {
+                setFontFamily("'Playpen Sans', cursive")
+                localStorage.setItem('fontFamily', "'Playpen Sans', cursive")
+              }}
+              style={{
+                background: '#fff',
+                padding: '10px',
+                borderRadius: '8px',
+                border:
+                  fontFamily === "'Playpen Sans', cursive"
+                    ? '1px solid #FFFF00'
+                    : '1px solid #dadfdd',
+                width: '20vw',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              PT Serif
+            </div>
+            <div
+              onClick={() => {
+                setFontFamily("'Onest', sans-serif")
+                localStorage.setItem('fontFamily', "'Onest', sans-serif")
+              }}
+              style={{
+                background: '#fff',
+                padding: '10px',
+                borderRadius: '8px',
+                border:
+                  fontFamily === "'Onest', sans-serif"
+                    ? '1px solid #FFFF00'
+                    : '1px solid #dadfdd',
+                width: '20vw',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              Onest
+            </div>
+          </div>
+        </div>
+
         <div
           style={{
             marginTop: '20px',
@@ -250,6 +515,68 @@ export const Persist = ({ url }: IProps) => {
             </div>
           </div>
         </div>
+
+        <div
+          style={{
+            marginTop: '20px',
+          }}
+        >
+          <p>O'qish tartibi</p>
+          <div
+            style={{
+              display: 'flex',
+              gap: '8px',
+              marginTop: '10px',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div
+              className="color selected"
+              onClick={() => {
+                setMode('paginated')
+                localStorage.setItem('mode', 'paginated')
+              }}
+              style={{
+                background: '#FAFCFB',
+                padding: '10px',
+                borderRadius: '8px',
+                width: '50vw',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                cursor: 'pointer',
+                border:
+                  mode === 'paginated'
+                    ? '1px solid #FFFF00'
+                    : '1px solid #dadfdd',
+              }}
+            >
+              Horizontal
+            </div>
+
+            <div
+              className="color"
+              onClick={() => {
+                setMode('scrolled')
+                localStorage.setItem('page', 'scrolled')
+              }}
+              style={{
+                background: '#FAFCFB',
+                padding: '10px',
+                borderRadius: '8px',
+                width: '50vw',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                cursor: 'pointer',
+                border:
+                  mode !== 'paginated'
+                    ? '1px solid #FFFF00'
+                    : '1px solid #dadfdd',
+              }}
+            >
+              Vertical
+            </div>
+          </div>
+        </div>
       </div>
 
       {page && (
@@ -273,6 +600,22 @@ export const Persist = ({ url }: IProps) => {
           {page}
         </div>
       )}
+
+      <div
+        onClick={() => {
+          setIsOpen(false)
+        }}
+        style={{
+          position: 'absolute',
+          background: 'transparent',
+          zIndex: 98,
+          width: '100vw',
+          height: '100vh',
+          left: '0',
+          top: '0',
+          display: isOpen ? 'block' : 'none',
+        }}
+      ></div>
     </Example>
   )
 }

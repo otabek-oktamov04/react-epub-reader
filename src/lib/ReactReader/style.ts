@@ -35,7 +35,6 @@ export const ReactReaderStyle: IReactReaderStyle = {
     height: '100%',
     width: '100%',
     backgroundColor: '#fff',
-    transition: 'all .3s ease',
   },
   containerExpanded: {
     transform: 'translateX(256px)',
@@ -65,9 +64,11 @@ export const ReactReaderStyle: IReactReaderStyle = {
   },
   prev: {
     left: 1,
+    display: 'none',
   },
   next: {
     right: 1,
+    display: 'none',
   },
   arrow: {
     outline: 'none',
