@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Contents, NavItem, Rendition } from 'epubjs'
 
 interface IProps {
-  url: string
+  url?: string
 }
 
 type ITheme = 'light' | 'dark' | 'pink' | 'green'
